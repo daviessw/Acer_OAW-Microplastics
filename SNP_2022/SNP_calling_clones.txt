@@ -1,0 +1,172 @@
+Calling SNPs in A.cervicornis microplastic OW work with Katie Greene
+
+module load fastx-toolkit
+
+# creating and launching the cleaning process for all files in the same time:
+tagseq_trim_launch.pl '\.fastq$' > clean
+##look at what is being done in clean
+nano clean
+tagseq_clipper.pl
+#you'll see that this is where we are removing PCR duplicates that were generated during library preparation. 
+
+nano clean
+#in the next steps you'll see that these commands are clipping poly A tails, Illumina adapters, short reads (<20bp) and low quality (to keep 90% of a read must be quality score >20)
+
+#sample line in code
+tagseq_clipper.pl 25_S30_L001_R1_001.fastq | fastx_clipper -a AAAAAAAA -l 20 -Q33 | fastx_clipper -a AGATCGGAAG -l 20 -Q33 | fastq_quality_filter -Q33 -q 20 -p 90 >25_S30_L001_R1_001.fastq.trim
+
+# now execute all commands written to file 'clean', preferably in array format
+scc6_qsub_launcher.py -N trim -P bi594 -jobsfile clean
+#this should create a trim.array.qsub and a trim_array_commands.txt files
+
+qsub trim_array.qsub
+
+#let's see what is happening on the cluster
+qstat -u daviessw (change to your username)
+
+##when the job is done, have a look in the trim.e* file
+cat trim.(tab complete)
+##this has all of the info for trimming. You'll see many sequences are PCR duplicates because this is TagSeq data and remember that we incorporated the degenerate bases into the cDNA synthesis. 
+
+#prep transcriptome for mapping
+module load bowtie2
+bowtie2-build Amil.all.maker.transcripts.fasta Amil.all.maker.transcripts.fasta
+
+#Now re-map all .trim files
+2bRAD_bowtie2_launch.pl '\.trim$' Amil.all.maker.transcripts.fasta >bowtie2_forsnp
+
+scc6_qsub_launcher.py -N mapping -P coral -M daviessw@gmail.com -j y -h_rt 24:00:00 -jobsfile bowtie2_forsnp
+
+qsub mapping_array.qsub
+
+#example line in script:
+bowtie2 --no-unal --score-min L,16,1 --local -L 16 -x Amil.all.maker.transcripts.fasta -U 6_S15_L001_R1_001.fastq.trim -S 6_S15_L001_R1_001.fastq.trim.bt2.sam
+#breakdown =
+#--no-unal = suppress SAM records for unaligned reads
+#--score-min L,16,1 [L = linear --> f(x) = 16 + 1 * x]
+#--local -L 16 = Sets the length of the seed substrings to align during multiseed alignment. 
+#Smaller values make alignment slower but more sensitive
+
+#this is different from the tagseq mapping script in a few ways. the tagseq method includes these unique flags:
+--no-hd = suppress SAM header lines (starting with @)
+--no-sq  = suppress @SQ SAM header lines
+-k = indicates -k mode. In this mode, bowtie searches for up to N distinct, valid alignments for each read. We have -k 5, meaning bowtie will search for at most 5 distinct alignments. 
+The manual says that the -k mode is effective in situations where you care more about whether a read aligns, or aligns a certain number of times, rather than where exactly it originated
+
+##now we have .sam files
+#now try making bam files:
+ls *bt2.sam > sams
+cat sams | wc -l
+
+cat sams | perl -pe 's/(\S+)\.sam/samtools import Amil.all.maker.transcripts.fasta $1\.sam $1\.unsorted\.bam && samtools sort -o $1\.sorted\.bam $1\.unsorted\.bam && picard AddOrReplaceReadGroups INPUT=$1\.sorted\.bam OUTPUT=$1\.bam RGID=group1 RGLB=lib1 RGPL=illumina RGPU=unit1 RGSM=$1 && samtools index $1\.bam/' >s2b
+
+#Example command for one file:
+samtools import Amil.all.maker.transcripts.fasta 9_S17_L001_R1_001.fastq.trim.bt2.sam 9_S17_L001_R1_001.fastq.trim.bt2.unsorted.bam && samtools sort -o 9_S17_L001_R1_001.fastq.trim.bt2.sorted.bam 9_S17_L001_R1_001.fastq.trim.bt2.unsorted.bam && picard AddOrReplaceReadGroups INPUT=9_S17_L001_R1_001.fastq.trim.bt2.sorted.bam OUTPUT=9_S17_L001_R1_001.fastq.trim.bt2.bam RGID=group1 RGLB=lib1 RGPL=illumina RGPU=unit1 RGSM=9_S17_L001_R1_001.fastq.trim.bt2 && samtools index 9_S17_L001_R1_001.fastq.trim.bt2.bam
+
+scc6_qsub_launcher.py -N sam2bam -P coral -M daviessw@gmail.com -j y -h_rt 24:00:00 -jobsfile s2b
+
+##note these module loads need to be within the qsub script
+nano sam2bam_array.qsub
+#paste these 3 commands in 
+module load htslib/1.9
+module load samtools/1.9
+module load picard
+
+qsub sam2bam_array.qsub
+
+#once job finishes, remove unnecessary intermediate files
+rm -f *sorted*
+
+ls *bt2.bam > bams
+cat bams | wc -l
+#24
+
+### angsd genotyping - initial quality check
+module load samtools
+module load picard
+
+#first need to create a dictionary and an index (.fai) file for the reference transcriptomes
+picard CreateSequenceDictionary R= Amil.all.maker.transcripts.fasta O= Amil.all.maker.transcripts.fasta
+
+samtools faidx Amil.all.maker.transcripts.fasta
+
+#--------------- population structure (based on common polymorphisms)
+
+# F I L T E R S :
+# (ALWAYS record your filter settings and explore different combinations to confirm that results are robust. )
+# Suggested filters :
+# -minMapQ 20 : only highly unique mappings (prob of erroneous mapping = 1%)
+# -minQ 30 : only highly confident base calls
+#could make this 20 to get more snps
+# -minInd 18 : the site must be genotyped in at least 18 individuals (note: set this to ~ 80% of your total number of your individuals)
+#lower this if you want more snps
+# -minIndDepth 6 : depth of at least 6 in non-missing individual
+#change to 5, no lower than 5 though
+# -snp_pval 1e-3 : high confidence that the SNP is not just sequencing error 
+# -minMaf 0.05 : only common SNPs, with allele frequency 0.05 or more.
+# Note: the last two filters are very efficient against sequencing errors but introduce bias against true rare alleles. It is OK (and even desirable) - UNLESS we want to do AFS analysis. We will generate data for AFS analysis in the next part.\
+# also adding  filters against very badly non-HWE sites (such as, all calls are heterozygotes => lumped paralog situation) and sites with really bad strand bias:\
+
+# T O   D O : \
+# -GL 1 : samtools likelihood model\
+# -doGlf 2 : output beagle format (for admixture)\
+# -doGeno 32 : binary genotype likelihoods format (for ngsCovar => PCA)\
+# -doMajorMinor 4 -ref $GENOME_REF : infer major and minor alleles from reference (in our case it is outgroup taxon)\
+# -makeMatrix 1 -doIBS 1 -doCov 1 : identity-by-state and covariance matrices based on single-read resampling (robust to variation in coverage across samples)\
+# TO-DO commands can be changed to generate different files needed for different analyses as well (http://www.popgen.dk/angsd/index.php/ANGSD#Overview) 
+
+#skipTrialellic 1 #could add this if you want to remove triallelic snps, usually a sequencing error
+
+#Request an interactive node before you start this analysis, might get kicked off for taking up too much memory on the head node
+#qrsh -pe omp 12
+
+###filter minIndDepth=1
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1 -sb_pval 1e-5 -hetbias_pval 1e-5 -skipTriallelic 1 -minInd 18 -setMinDepthInd 1 -snp_pval 1e-5 -minMaf 0.05"
+TODO="-doMajorMinor 1 -doMaf 1 -makeMatrix 1 -doCounts 1 -doIBS 1 -seed 10 -doCov 1 -doGeno 8 -doBcf 1 -doPost 1 -doGlf 2"
+module load angsd
+angsd -b bams -GL 1 $FILTERS $TODO -P 1 -out acer1
+
+###filter minIndDepth=2
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1 -sb_pval 1e-5 -hetbias_pval 1e-5 -skipTriallelic 1 -minInd 18 -setMinDepthInd 2 -snp_pval 1e-5 -minMaf 0.05"
+TODO="-doMajorMinor 1 -doMaf 1  -makeMatrix 1 -doCounts 1 -doIBS 1 -seed 10 -doCov 1 -doGeno 8 -doBcf 1 -doPost 1 -doGlf 2"
+module load angsd
+angsd -b bams -GL 1 $FILTERS $TODO -P 1 -out acer2
+
+###filter minIndDepth=3
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1 -sb_pval 1e-5 -hetbias_pval 1e-5 -skipTriallelic 1 -minInd 18 -setMinDepthInd 3 -snp_pval 1e-5 -minMaf 0.05"
+TODO="-doMajorMinor 1 -doMaf 1 -makeMatrix 1 -doCounts 1 -doIBS 1 -seed 10 -doCov 1 -doGeno 8 -doBcf 1 -doPost 1 -doGlf 2"
+module load angsd
+angsd -b bams -GL 1 $FILTERS $TODO -P 1 -out acer3
+
+###filter minIndDepth=4
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1 -sb_pval 1e-5 -hetbias_pval 1e-5 -skipTriallelic 1 -minInd 18 -setMinDepthInd 4 -snp_pval 1e-5 -minMaf 0.05"
+TODO="-doMajorMinor 1 -doMaf 1 -makeMatrix 1 -doCounts 1 -doIBS 1 -seed 10 -doCov 1 -doGeno 8 -doBcf 1 -doPost 1 -doGlf 2"
+module load angsd
+angsd -b bams -GL 1 $FILTERS $TODO -P 1 -out acer4
+
+###filter minIndDepth=5
+FILTERS="-uniqueOnly 1 -remove_bads 1 -minMapQ 20 -minQ 25 -dosnpstat 1 -doHWE 1 -sb_pval 1e-5 -hetbias_pval 1e-5 -skipTriallelic 1 -minInd 18 -setMinDepthInd 5 -snp_pval 1e-5 -minMaf 0.05"
+TODO="-doMajorMinor 1 -doMaf 1 -makeMatrix 1 -doCounts 1 -doIBS 1 -seed 10 -doCov 1 -doGeno 8 -doBcf 1 -doPost 1 -doGlf 2"
+module load angsd
+angsd -b bams -GL 1 $FILTERS $TODO -P 1 -out acer5
+
+###### ADMIXTURE\
+module load admixture
+module load angsd
+
+NSITES=`zcat acer1.beagle.gz | wc -l`
+NSITES=`zcat acer2.beagle.gz | wc -l`
+NSITES=`zcat acer3.beagle.gz | wc -l`
+NSITES=`zcat acer4.beagle.gz | wc -l`
+NSITES=`zcat acer5.beagle.gz | wc -l`
+
+echo $NSITES
+#acer1: 22,191
+#acer2: 12,286
+#acer3: 7,788
+#acer4: 5,312
+#acer5: 4,018
+
+##ended up choosing midinddepth of 5
+
+##pulled the acerN.ibsMat files and the bams to a folder on home computer and ran the script Acer_Hclust.R to visualize the clustering of samples
