@@ -542,6 +542,8 @@ FigureS2
 ggsave("Figures/FigureS2_venn.png", height = 4.8, width = 10, dpi = 600)
 ggsave("Figures/FigureS2_venn.pdf", height = 4.8, width = 10, useDingbats = FALSE)
 
+
+
 ################################### heatmaps for genes AMB vs MP
 rldpvals <- read.csv(file="AcerMicro_RLDandPVALS.csv", row.names=1)
 head(rldpvals)
@@ -563,7 +565,7 @@ explc=exp-means # subtracting them
 head(explc)
 head(gg)
 
-library(tidyverse)
+
 df_all_iso <- explc %>%
   rownames_to_column("V1") %>%
   left_join(gg) %>%
@@ -591,15 +593,18 @@ colnames(anno)
 my_sample_col <- data.frame(treatment = c("MP","AMB","MP","AMB","MP","MP","AMB","MP","AMB", "AMB"))
 row.names(my_sample_col)= colnames(anno)
 my_colour = list(
-  Treatment = c(MP = "darkorange", AMB = "dodgerblue"))
+  treatment = c(MP = cbPalette[2], AMB = cbPalette[1]))
+
+library(pheatmap)
 
 # big heat map of all annotated genes
-pdf("MP_AMB_DEGS_0.10_annotated.pdf",height=5,width=25, onefile=F)
-pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA")
+pdf("Figures/MP_AMB_DEGS_0.10_annotated.pdf",height=5,width=25, onefile=F)
+pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
+
 # big heat map of all DEGs, no annotation too
-pdf("MP_AMB_DEGS_0.10_unannotated.pdf",height=5,width=4, onefile=F)
-pheatmap(unanno,cluster_cols=T,scale="row",color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = F,show_colnames = F, border_color = "NA")
+pdf("Figures/MP_AMB_DEGS_0.10_unannotated.pdf",height=5,width=4, onefile=F)
+pheatmap(unanno,cluster_cols=T,scale="row",color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = F,show_colnames = F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
 
 ###################################heatmaps for genes AMB vs OAW
@@ -622,7 +627,7 @@ explc=exp-means # subtracting them
 head(explc)
 head(gg)
 
-library(tidyverse)
+
 df_all_iso <- explc %>%
   rownames_to_column("V1") %>%
   left_join(gg) %>%
@@ -651,15 +656,16 @@ colnames(anno)
 my_sample_col <- data.frame(treatment = c("OAW","AMB","AMB","AMB","OAW","OAW","AMB","AMB","OAW"))
 row.names(my_sample_col)= colnames(anno)
 my_colour = list(
-  Treatment = c(OAW = "firebrick2", AMB = "dodgerblue"))
+  treatment = c(OAW = cbPalette[3], AMB = cbPalette[1]))
 
 # big heat map of all annotated genes
-pdf("OAW_AMB_DEGS_0.10_annotated.pdf",height=5,width=10, onefile=F)
-pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA")
+pdf("Figures/OAW_AMB_DEGS_0.10_annotated.pdf",height=5,width=10, onefile=F)
+pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
+
 # big heat map of all DEGs, no annotation too
-pdf("OAW_AMB_DEGS_0.10_unannotated.pdf",height=4,width=4, onefile=F)
-pheatmap(unanno,cluster_cols=T,scale="row",color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = F,show_colnames = F, border_color = "NA")
+pdf("Figures/OAW_AMB_DEGS_0.10_unannotated.pdf",height=4,width=4, onefile=F)
+pheatmap(unanno,cluster_cols=T,scale="row",color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = F,show_colnames = F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
 
 ###################################heatmaps for genes AMB vs OAW+MP
@@ -682,7 +688,6 @@ explc=exp-means # subtracting them
 head(explc)
 head(gg)
 
-library(tidyverse)
 df_all_iso <- explc %>%
   rownames_to_column("V1") %>%
   left_join(gg) %>%
@@ -711,16 +716,18 @@ colnames(anno)
 my_sample_col <- data.frame(treatment = c("OAW_MP","AMB","AMB","OAW_MP","AMB","OAW_MP","OAW_MP","OAW_MP","AMB","AMB"))
 row.names(my_sample_col)= colnames(anno)
 my_colour = list(
-  Treatment = c(OAW_MP = "firebrick4", AMB = "dodgerblue"))
+  treatment = c(OAW_MP = cbPalette[4], AMB = cbPalette[1]))
 
 # big heat map of all annotated genes
-pdf("OAW_MP_AMB_DEGS_0.10_annotated.pdf",height=10,width=20, onefile=F)
-pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA")
+pdf("Figures/OAW_MP_AMB_DEGS_0.10_annotated.pdf",height=10,width=20, onefile=F)
+pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
+
 # big heat map of all DEGs, no annotation too
-pdf("OAW_MP_AMB_DEGS_0.10_unannotated.pdf",height=4,width=4, onefile=F)
-pheatmap(unanno,cluster_cols=T,scale="row",color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = F,show_colnames = F, border_color = "NA")
+pdf("Figures/OAW_MP_AMB_DEGS_0.10_unannotated.pdf",height=4,width=4, onefile=F)
+pheatmap(unanno,cluster_cols=T,scale="row",color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = F,show_colnames = F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
+
 
 ####now go do GO enrichment analysis
 #this analysis was conducted separatelyusing GO_MWU.R script
@@ -784,17 +791,17 @@ head(anno)
 colnames(anno)
 
 ##write out and edit manually a few gene names that have weird descriptions
-write.csv(anno, "immunity_info.csv", quote=F)
+write.csv(anno, "immunity_info.csv", quote=TRUE)
 anno2=read.csv("immunity_info.csv", row.names=1)
 
 #cbPalette2 <- c("darkorange","firebrick2", "firebrick4")
 my_sample_col <- data.frame(treatment = c("OAW_MP","AMB","AMB","OAW_MP","AMB","OAW_MP","OAW_MP", "OAW_MP","AMB","AMB"))
 row.names(my_sample_col)= colnames(anno)
 my_colour = list(
-  treatment = c(OAW_MP = "firebrick4", AMB = "dodgerblue"))
+  treatment = c(OAW_MP = cbPalette[4], AMB = cbPalette[1]))
 
 # big heat map of all annotated genes
 library(pheatmap)
-pdf("OAW_AMB_immunity.pdf",height=8.5,width=9, onefile=F)
-pheatmap(anno2,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA")
+pdf("Figures/OAW_AMB_immunity.pdf",height=8.5,width=16, onefile=F)
+pheatmap(anno2, cluster_cols=TRUE,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = TRUE, show_colnames =FALSE, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
