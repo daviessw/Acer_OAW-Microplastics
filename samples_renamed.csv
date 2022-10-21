@@ -1,0 +1,25 @@
+sample,original_genet,genet,treat,full_name
+10,6B - 2,G6,OAW_MP,10_G6_OAW_MP
+11,5B - 1,G5,OAW_Control,11_G5_OAW_Control
+12,5aE - 1,G5a,AMB_MP,12_G5a_AMB_MP
+14,12E - 1,G10a,AMB_Control,14_G10a_AMB_Control
+15,2E - 1,G2,AMB_MP,15_G2_AMB_MP
+16,2B - 1,G2,AMB_Control,16_G2_AMB_Control
+17,6B - 1,G6,AMB_MP,17_G6_AMB_MP
+19,10aC - 1,G10a,OAW_Control,19_G10a_OAW_Control
+20,12E - 2,G10a,AMB_MP,20_G10a_AMB_MP
+22,5aA - 1,G5a,OAW_MP,22_G5a_OAW_MP
+23,5D - 1,G5,AMB_Control,23_G5_AMB_Control
+24,12B - 1,G10a,OAW_MP,24_G10a_OAW_MP
+25,5C - 1,G5,AMB_MP,25_G5_AMB_MP
+26,10aD - 1,G10a,AMB_Control,26_G10a_AMB_Control
+28,5C - 2,G5,OAW_MP,28_G5_OAW_MP
+29,2A - 1,G2,OAW_Control,29_G2_OAW_Control
+2,10aA - 1,G10a,OAW_MP,2_G10a_OAW_MP
+32,12A - 1,G10a,OAW_Control,32_G10a_OAW_Control
+34,2D - 1,G2,OAW_MP,34_G2_OAW_MP
+35,6E - 1,G6,OAW_Control,35_G6_OAW_Control
+3,5aC - 2,G5a,AMB_Control,3_G5a_AMB_Control
+6,10aB - 1,G10a,AMB_MP,6_G10a_AMB_MP
+8,6D - 1,G6,AMB_Control,8_G6_AMB_Control
+9,5aC - 1,G5a,OAW_Control,9_G5a_OAW_Control

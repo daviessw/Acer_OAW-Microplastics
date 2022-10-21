@@ -1,13 +1,16 @@
 # source("http://bioconductor.org/biocLite.R")
 # biocLite("DESeq2")
 
-#set your working directory
-setwd("~/Dropbox/Acer_Microplastics") 
+## set working directory (using and if statement so Sarah and Colleen can have different working directories)
+if(!grepl("Colleen", getwd(), fixed = TRUE)) {
+  setwd("~/Dropbox/Acer_Microplastics") 
+}
+  
 
 ###conduct array quality metrics to detect and remove outliers
 library(DESeq2)
 library(vegan)
-library(ggplot2)
+library(tidyverse)
 
 #read in counts 
 countData <- read.table("acer_genome_2022counts.txt")
@@ -15,7 +18,8 @@ head(countData)
 length(countData[,1])
 #21569
 
-conditions <- read.csv("samples_renamed.csv")
+conditions <- read.csv("samples_renamed.csv") %>% 
+  mutate(treat = recode(treat, AMB_Control = "AMB", AMB_MP = "MP", OAW_Control = "OAW", OAW_MP = "OAW+MP"))
 row.names(conditions) <- conditions$sample
 
 #### making conditions data frame ####
@@ -85,29 +89,45 @@ pca_s$treatment=g$conditions.treat
 pca_s$genet=g$conditions.genet
 head(pca_s)
 
-cbPalette <- c("dodgerblue", "darkorange","firebrick2", "firebrick4")
-pdf("PCA_allgenes_rlog.pdf",height=4,width=5, useDingbats = FALSE)
-ggplot(pca_s, aes(PC1, PC2, fill=treatment, shape=genet, group=treatment, label = rownames(pca_s))) +
-  guides(color=guide_legend(title="Treatment"))+
-  guides(pch=guide_legend(title="Genotype"))+
-  geom_point(color = "black", size=4) +
-  scale_fill_manual(values=cbPalette)+
-  scale_colour_manual(values=cbPalette)+
-  scale_shape_manual(values=c(21,22,23,24,25))+
-  theme_bw() +
-  stat_ellipse(aes(x=PC1, y=PC2, group=treatment, colour = treatment))+
-  xlab(paste0("PC1: ",pc1v,"% variance")) +
-  ylab(paste0("PC2: ",pc2v,"% variance")) + 
-  guides(fill = "none")
-dev.off()
-
-adonis(pca_s[,1:2] ~ treatment+genet, data = pca_s, method='eu', na.rm = TRUE)
+# run adonis and then pull pvals for plot
+adon_all <- adonis(pca_s[,1:2] ~ treatment + genet, data = pca_s, method='eu', na.rm = TRUE)
+adon_all$aov.tab
 ##only genet significant when using all genes
 # Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
 # treatment  3     836.1  278.71  2.0342 0.15687  0.115    
 # genet      4    2986.9  746.73  5.4500 0.56038  0.001 ***
 #   Residuals 11    1507.1  137.01         0.28276           
 # Total     18    5330.2                 1.00000
+
+
+## Add the stats to the PCA plot
+pca_all_gen_pval <- substitute(italic(P[genotype])==p, list(p = format(adon_all$aov.tab[[2,6]], digits = 2)))
+pca_all_trt_pval <- substitute(italic(P[treat])==p, list(p = format(adon_all$aov.tab[[1,6]], digits = 2)))
+
+
+## set colours for all figures
+cbPalette <- c("#abd9e9", "#2c7bb6","#fdae61", "#d7191c")
+
+pdf("Figures/PCA_allgenes_rlog.pdf",height=4,width=5, useDingbats = FALSE)
+pca_all <- ggplot(pca_s, aes(PC1, PC2, fill=treatment, shape=genet, group=treatment, label = rownames(pca_s))) +
+  guides(color=guide_legend(title="Treatment"))+
+  guides(pch=guide_legend(title="Genotype"))+
+  geom_point(color = "black", size=4) +
+  scale_fill_manual(values=cbPalette)+
+  scale_colour_manual(values=cbPalette)+
+  scale_shape_manual(values=c(21,22,23,24,25))+
+  theme_bw() + 
+  theme(panel.grid = element_blank()) +
+  stat_ellipse(aes(x=PC1, y=PC2, group=treatment, colour = treatment))+
+  xlab(paste0("PC1: ",pc1v,"% variance")) +
+  ylab(paste0("PC2: ",pc2v,"% variance")) + 
+  guides(fill = "none") +
+  annotate("text", x = -40, y = -45, label = deparse(pca_all_gen_pval), parse = TRUE, size = 4) + # genotype p value
+  annotate("text", x = -47, y = -52, label = deparse(pca_all_trt_pval), parse = TRUE, size = 4) + # treatment p value
+  ggtitle("All genes")
+pca_all
+dev.off()
+
 
 # #######Establishing top DEGs#######
 top<-head(res[order(res$pvalue),], 1000)
@@ -136,9 +156,23 @@ pca_s$treatment=g$conditions.treat
 pca_s$genet=g$conditions.genet
 head(pca_s)
 
-cbPalette <- c("dodgerblue", "darkorange","firebrick2", "firebrick4")
-pdf("PCA_top1000_rlog.pdf",height=4,width=5, useDingbats = FALSE)
-ggplot(pca_s, aes(PC1, PC2, fill=treatment, shape=genet, group=treatment, label = rownames(pca_s))) +
+
+# run adonis and then pull pvals for plot
+adon_top <- adonis(pca_s[,1:2] ~ treatment+genet, data = pca_s, method='eu', na.rm = TRUE)
+adon_top$aov.tab
+# Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
+# treatment  3    554.63 184.876 17.1988 0.57879  0.001 ***
+#   genet      4    285.39  71.347  6.6374 0.29782  0.001 ***
+#   Residuals 11    118.24  10.749         0.12339           
+# Total     18    958.26                 1.00000  
+
+## Add the stats to the PCA plot
+pca_top_gen_pval <- substitute(italic(P[genotype])==p, list(p = format(adon_top$aov.tab[[2,6]], digits = 2)))
+pca_top_trt_pval <- substitute(italic(P[treat])==p, list(p = format(adon_top$aov.tab[[1,6]], digits = 2)))
+
+
+pdf("Figures/PCA_top1000_rlog.pdf",height=4, width=4, useDingbats = FALSE)
+pca_top <- ggplot(pca_s, aes(PC1, PC2, fill=treatment, shape=genet, group=treatment, label = rownames(pca_s))) +
   guides(color=guide_legend(title="Treatment"))+
   guides(pch=guide_legend(title="Genotype"))+
   geom_point(color = "black", size=4) +
@@ -146,54 +180,41 @@ ggplot(pca_s, aes(PC1, PC2, fill=treatment, shape=genet, group=treatment, label 
   scale_colour_manual(values=cbPalette)+
   scale_shape_manual(values=c(21,22,23,24,25))+
   theme_bw() +
+  theme(panel.grid = element_blank(), legend.position = "none") + 
   stat_ellipse(aes(x=PC1, y=PC2, group=treatment, colour = treatment))+
   xlab(paste0("PC1: ",pc1v,"% variance")) +
   ylab(paste0("PC2: ",pc2v,"% variance")) + 
-  guides(fill = "none")
+  guides(fill = "none") +
+  annotate("text", x = -13.0, y = -15.5, label = deparse(pca_top_gen_pval), parse = TRUE, size = 4) + # genotype p value
+  annotate("text", x = -14.5, y = -18, label = deparse(pca_top_trt_pval), parse = TRUE, size = 4) + # treatment p value
+  ggtitle("Top 1000")
+pca_top
 dev.off()
 
-adonis(pca_s[,1:2] ~ treatment+genet, data = pca_s, method='eu', na.rm = TRUE)
-# Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
-# treatment  3    554.63 184.876 17.1988 0.57879  0.001 ***
-#   genet      4    285.39  71.347  6.6374 0.29782  0.001 ***
-#   Residuals 11    118.24  10.749         0.12339           
-# Total     18    958.26                 1.00000  
 
 ####GE plasticity analysis
 library(dplyr) # necessary for PCA function
 library(ggfortify) # plotting the PCA
 library(vegan) # running the PERMANOVA (adonis2())
 library(ggpubr) # for arranging multiple plots into single figure
+library(broom) # this is just to pull a tibble of the aov
 source("PCAplast_function.R") # source the plasticity function
 conds=pca_s[,3:5]
 str(conds)
+
 ## To run the plasticity function, enter the following objects:
 plast_out <- PCAplast(pca = pca, # the PCA dataframe containing the PCA eigenvalues
                       data = conds, # the condition/treatment data corresponding to samples
                       sample_ID = "Samples", # the name of column that provide unique ID per sample (if blank, will pull rownames for this)
                       num_pca =  "2", # the number of PCAs to include in analysis (default is 'all', but you can specify another number with a minimum of 2 PCAs)
-                      control_lvl = "AMB_Control", # control level of the treatment. If blank, a control mean per control level is assumed
+                      control_lvl = "AMB", # control level of the treatment. If blank, a control mean per control level is assumed
                       group = "genet", # the grouping column (i.e., colony). If blank, will assume control level grouping only!
                       control_col = "treatment") # what the 'treatment' column is called
 head(plast_out)
-## Plot the plasticity (PC distances): overlay mean and 1 standard deviation
-cbPalette2 <- c("darkorange","firebrick2", "firebrick4")
-pdf("plasticity_top1000.pdf",height=4,width=3, useDingbats = FALSE)
-plast_plot <- ggplot(data = plast_out, aes(x = treatment, y = dist, fill=treatment, shape=genet, group=treatment)) + 
-  geom_point(color = "black", size=4, alpha = 0.3, position = position_jitter(width = 0.15)) +
-  scale_fill_manual(values=cbPalette2)+
-  scale_colour_manual(values=cbPalette2)+
-  scale_shape_manual(values=c(21,22,23,24,25))+
-  stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0, colour = c("darkorange","firebrick2", "firebrick4")) +
-  stat_summary(fun = "mean", size = 0.5, colour = c("darkorange","firebrick2", "firebrick4")) +
-  theme_bw() +
-  ylab("Plasticity +/- SD")+
-  xlab("Treatment")+
-  theme(legend.position = "none")
-plast_plot
-dev.off()
 
-aov1=aov(dist~treatment, data=plast_out)
+
+## Check the stats and pull pvalue for plotting
+aov1 <- aov(dist~treatment, data=plast_out)
 summary(aov1)
 # Df Sum Sq Mean Sq F value Pr(>F)  
 # treatment    2  98.85   49.43   4.349 0.0406 *
@@ -201,16 +222,54 @@ summary(aov1)
 TukeyHSD(aov1)
 # $treatment
 # diff        lwr       upr     p adj
-# OAW_Control-AMB_MP -0.5304615 -6.6386956  5.577773 0.9702090
+# OAW-AMB_MP -0.5304615 -6.6386956  5.577773 0.9702090
 # OAW_MP-AMB_MP       5.2923110 -0.4665873 11.051209 0.0723525
-# OAW_MP-OAW_Control  5.8227725 -0.2854615 11.931007 0.0619245
+# OAW_MP-OAW  5.8227725 -0.2854615 11.931007 0.0619245
+
+## Add the stats to the PCA plot
+aov_top_gen_pval <- substitute(italic(P[genotype])==p, list(p = format(tidy(aov1)[[1,6]], digits = 2)))
+
+
+## Plot the plasticity (PC distances): overlay mean and 1 standard deviation
+pdf("Figures/plasticity_top1000.pdf",height=4,width=3, useDingbats = FALSE)
+plast_plot <- ggplot(data = plast_out, aes(x = treatment, y = dist, fill=treatment, shape=genet, group=treatment)) + 
+  geom_point(color = "black", size=4, alpha = 0.3, position = position_jitter(width = 0.15)) +
+  scale_fill_manual(values = cbPalette[-1])+
+  scale_colour_manual(values = cbPalette[-1])+
+  scale_shape_manual(values=c(21,22,23,24,25))+
+  stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0, size = 1, colour = cbPalette[-1]) +
+  stat_summary(fun = "mean", size = 0.8, colour = cbPalette[-1]) +
+  theme_bw() +
+  annotate("text", x = 2.7, y = 3.4, label = deparse(aov_top_gen_pval), parse = TRUE, size = 4) + # treatment p value
+  ylab("Plasticity +/- SD")+
+  xlab("Treatment")+
+  theme(legend.position = "none", panel.grid = element_blank())
+plast_plot
+dev.off()
+
+
+
+### Create full figure 3 (PCA all, PCA top 1000, and plasticity)
+library(patchwork)
+
+## set the layout
+layout_fig3 <- "
+AAABBBCC
+"
+
+## add plots together with layout
+Figure3 <- pca_all + pca_top + plast_plot + plot_layout(design = layout_fig3) + plot_annotation(tag_levels = 'A')
+Figure3
+
+## save figure 
+ggsave("Figures/Figure3_GE.png", height = 5, width = 14, dpi = 600)
+ggsave("Figures/Figure3_GE.pdf", height = 5, width = 14, useDingbats = FALSE)
 
 
 #################### OAW pairwise comparisons
 g
-g$conditions.treat<-factor(g$conditions.treat, levels=c("OAW_Control","AMB_Control"))
 ##second term is the "control"
-resOAW <- results(dds, contrast=c("conditions.treat","OAW_Control","AMB_Control"))
+resOAW <- results(dds, contrast=c("conditions.treat","OAW","AMB"))
 #how many FDR < 10%?
 table(resOAW$padj<0.05)
 # 0.1=36
@@ -227,7 +286,7 @@ summary(resOAW)
 
 nrow(resOAW[resOAW$padj<0.05 & !is.na(resOAW$padj),])  # Num significantly differentially expressed genes excluding the no/low count genes   #228
 #20
-plotMA(resOAW, main="OAW_Control vs AMB_Control")
+plotMA(resOAW, main="OAW vs AMB")
 
 results <- as.data.frame(resOAW)
 head(results)
@@ -252,8 +311,11 @@ colnames(go_OAW) <- c("gene", "pval")
 head(go_OAW)
 write.csv(go_OAW, file="go_OAW.csv", quote=F, row.names=FALSE)
 
-##########################MP Pairwise Comparison
-conditions <- read.csv("samples_renamed.csv")
+
+
+########################## MP Pairwise Comparison
+conditions <- read.csv("samples_renamed.csv") %>% 
+  mutate(treat = recode(treat, AMB_Control = "AMB", AMB_MP = "MP", OAW_Control = "OAW", OAW_MP = "OAW+MP"))
 row.names(conditions) <- conditions$sample
 conditions <- subset(conditions,sample!=29)
 remove <- c("2","19","26","6")
@@ -261,9 +323,9 @@ conditions <- conditions[!conditions$sample %in% remove,]
 g=data.frame(conditions$genet, conditions$treat)
 g
 g=data.frame(conditions$genet, conditions$treat)
-g$conditions.treat<-factor(g$conditions.treat, levels=c("AMB_MP","AMB_Control"))
+g$conditions.treat<-factor(g$conditions.treat, levels=c("MP","AMB"))
 ##second term is the "control"
-resMP <- results(dds, contrast=c("conditions.treat","AMB_MP","AMB_Control"))
+resMP <- results(dds, contrast=c("conditions.treat","MP","AMB"))
 #how many FDR < 10%?
 table(resMP$padj<0.05)
 # 0.1=57
@@ -280,7 +342,7 @@ summary(resMP)
 
 nrow(resMP[resMP$padj<0.05 & !is.na(resMP$padj),])  # Num significantly differentially expressed genes excluding the no/low count genes   #228
 #17
-plotMA(resMP, main="AMB_Microplastics vs AMB_Control")
+plotMA(resMP, main="AMB_Microplastics vs AMB")
 
 results <- as.data.frame(resMP)
 head(results)
@@ -305,8 +367,10 @@ colnames(go_MP) <- c("gene", "pval")
 head(go_MP)
 write.csv(go_MP, file="go_MP.csv", quote=F, row.names=FALSE)
 
-#################Pairwise Comparison OAW+MP
-conditions <- read.csv("samples_renamed.csv")
+
+################# Pairwise Comparison OAW+MP
+conditions <- read.csv("samples_renamed.csv") %>% 
+  mutate(treat = recode(treat, AMB_Control = "AMB", AMB_MP = "MP", OAW_Control = "OAW", OAW_MP = "OAW+MP"))
 row.names(conditions) <- conditions$sample
 conditions <- subset(conditions,sample!=29)
 remove <- c("2","19","26","6")
@@ -314,9 +378,9 @@ conditions <- conditions[!conditions$sample %in% remove,]
 g=data.frame(conditions$genet, conditions$treat)
 g
 g=data.frame(conditions$genet, conditions$treat)
-g$conditions.treat<-factor(g$conditions.treat, levels=c("OAW_MP","AMB_Control"))
+g$conditions.treat<-factor(g$conditions.treat, levels=c("OAW+MP","AMB"))
 ##second term is the "control"
-resALL <- results(dds, contrast=c("conditions.treat","OAW_MP","AMB_Control"))
+resALL <- results(dds, contrast=c("conditions.treat","OAW+MP","AMB"))
 #how many FDR < 10%?
 table(resALL$padj<0.05)
 # 0.1=138
@@ -333,7 +397,7 @@ summary(resALL)
 
 nrow(resALL[resALL$padj<0.05 & !is.na(resALL$padj),])  # Num significantly differentially expressed genes excluding the no/low count genes   #228
 #100
-plotMA(resALL, main="OAW_Microplastics vs AMB_Control")
+plotMA(resALL, main="OAW_Microplastics vs AMB")
 
 results <- as.data.frame(resALL)
 head(results)
@@ -438,28 +502,47 @@ length(pdegs05)
 #209
 
 ###do separately for UP, DOWN, ALL and save as PDF
-library(VennDiagram)
-candidates=list("OAW"=pOAW_down, "MP"=pMP_down, "OAW+MP"=pALL_down)
-prettyvenn=venn.diagram(
-  x = candidates,
-  filename=NULL,
-  col = "transparent",
-  fill = c("firebrick2", "darkorange","firebrick4"),
-  alpha = 0.5,
-  # label.col = c("darkred", "white", "darkgreen", "white", "white", "white", "blue4"),
-  cex = 2.5,
-  fontfamily = "sans",
-  fontface = "bold",
-  cat.default.pos = "text",
-  cat.col = c("firebrick3", "darkorange2","black"),
-  cat.cex = 2.5,
-  cat.fontfamily = "sans",
-  cat.dist = c(0.08, 0.08,0.08),
-  cat.pos = 1
-);
-grid.draw(prettyvenn)
+library(ggvenn)
 
-###################################heatmaps for genes AMB vs MP
+# down DEG venn
+down_genes = list("MP"=pMP_down, "OAW"=pOAW_down, "OAW+MP"=pALL_down)
+down_venn <- ggvenn(down_genes,
+                    show_percentage = FALSE,
+                    stroke_color = "transparent",
+                    fill_color = cbPalette[-1],
+                    fill_alpha = 0.3,
+                    #set_name_color = cbPalette[-1],
+                    set_name_size = 9,
+                    text_color = "#313695",
+                    text_size = 7) +
+  theme(title =element_text(size = 18, colour = "#313695"), plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Down
+          ")
+
+# up DEG venn
+up_genes = list("MP"=pMP_up, "OAW"=pOAW_up, "OAW+MP"=pALL_up)
+up_venn <- ggvenn(up_genes,
+               show_percentage = FALSE,
+               stroke_color = "transparent",
+               fill_color = cbPalette[-1],
+               fill_alpha = 0.3,
+               #set_name_color = cbPalette[-1],
+               set_name_size = 9,
+               text_color = "#a50026",
+               text_size = 7) +
+  theme(title =element_text(size = 18, colour = "#a50026"), plot.title = element_text(hjust = 0.5)) +
+  ggtitle("Up
+          ")
+
+FigureS2 <- up_venn + down_venn + plot_annotation(tag_levels = 'A') & 
+  theme(plot.tag = element_text(colour = "black"))
+FigureS2
+
+## save figure 
+ggsave("Figures/FigureS2_venn.png", height = 4.8, width = 10, dpi = 600)
+ggsave("Figures/FigureS2_venn.pdf", height = 4.8, width = 10, useDingbats = FALSE)
+
+################################### heatmaps for genes AMB vs MP
 rldpvals <- read.csv(file="AcerMicro_RLDandPVALS.csv", row.names=1)
 head(rldpvals)
 rld_MP= rldpvals[,c(3:8,10,12,17,18,22,23)]
