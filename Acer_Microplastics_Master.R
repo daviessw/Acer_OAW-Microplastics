@@ -227,7 +227,7 @@ TukeyHSD(aov1)
 # OAW_MP-OAW  5.8227725 -0.2854615 11.931007 0.0619245
 
 ## Add the stats to the PCA plot
-aov_top_gen_pval <- substitute(italic(P[genotype])==p, list(p = format(tidy(aov1)[[1,6]], digits = 2)))
+aov_top_gen_pval <- substitute(italic(P[treat])==p, list(p = format(tidy(aov1)[[1,6]], digits = 2)))
 
 
 ## Plot the plasticity (PC distances): overlay mean and 1 standard deviation
