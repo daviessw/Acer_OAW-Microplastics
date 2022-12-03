@@ -18,8 +18,7 @@ head(countData)
 length(countData[,1])
 #21569
 
-conditions <- read.csv("samples_renamed.csv") %>% 
-  mutate(treat = recode(treat, AMB_Control = "AMB", AMB_MP = "MP", OAW_Control = "OAW", OAW_MP = "OAW+MP"))
+conditions <- read.csv("samples_renamed.csv") 
 row.names(conditions) <- conditions$sample
 
 #### making conditions data frame ####
@@ -32,12 +31,12 @@ names(countData)
 totalCounts=colSums(countData)
 totalCounts
 barplot(totalCounts, ylab="raw counts", xlab="sample number")
-#     10     11     12     14     15     16     17     19     20     22     23     24     25 
-# 834588 846094 609277 828973 648174 880982 414581 800716 863849 929270 780221 761130 656062 
-# 26     28     29      2     32     34     35      3      6      8      9 
-# 664303 604654 166828 688099 844935 758436 521313 818571 685167 966574 674017 
-min(totalCounts) #166828
-max(totalCounts)  #966574
+# 10     11     12     14     15     16     17     19     20     22     23     24     25     26     28     29      2     32     34     35 
+# 834588 846094 609277 828973 648174 880982 414581 800716 863849 929270 780221 761130 656062 664303 604654 166828 688099 844935 758436 521313
+# 3      6      8      9 
+# 818571 685167 966574 674017 
+min(totalCounts) # 166828
+max(totalCounts)  # 966574
 
 #### remove sample 29 - bad # of reads ####
 #skip these next 2 lines if you want to look at the data with sample 29
@@ -93,11 +92,11 @@ head(pca_s)
 adon_all <- adonis(pca_s[,1:2] ~ treatment + genet, data = pca_s, method='eu', na.rm = TRUE)
 adon_all$aov.tab
 ##only genet significant when using all genes
-# Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
-# treatment  3     836.1  278.71  2.0342 0.15687  0.115    
-# genet      4    2986.9  746.73  5.4500 0.56038  0.001 ***
-#   Residuals 11    1507.1  137.01         0.28276           
-# Total     18    5330.2                 1.00000
+#            Df SumsOfSqs MeanSqs F.Model  R2     Pr(>F)   
+# treatment  3     835.5  278.51  2.0339 0.15688  0.122   
+# genet      4    2984.0  746.00  5.4479 0.56029  0.003 **
+# Residuals 11    1506.3  136.93         0.28282          
+# Total     18    5325.8                 1.00000          
 
 
 ## Add the stats to the PCA plot
@@ -113,8 +112,8 @@ pca_all <- ggplot(pca_s, aes(PC1, PC2, fill=treatment, shape=genet, group=treatm
   guides(color=guide_legend(title="Treatment"))+
   guides(pch=guide_legend(title="Genotype"))+
   geom_point(color = "black", size=4) +
-  scale_fill_manual(values=cbPalette)+
-  scale_colour_manual(values=cbPalette)+
+  scale_fill_manual(values = cbPalette, labels = c("AMB", "MP", "OAW", "OAW+MP")) +
+  scale_colour_manual(values = cbPalette, labels = c("AMB", "MP", "OAW", "OAW+MP")) +
   scale_shape_manual(values=c(21,22,23,24,25))+
   theme_bw() + 
   theme(panel.grid = element_blank()) +
@@ -160,11 +159,11 @@ head(pca_s)
 # run adonis and then pull pvals for plot
 adon_top <- adonis(pca_s[,1:2] ~ treatment+genet, data = pca_s, method='eu', na.rm = TRUE)
 adon_top$aov.tab
-# Df SumsOfSqs MeanSqs F.Model      R2 Pr(>F)    
-# treatment  3    554.63 184.876 17.1988 0.57879  0.001 ***
-#   genet      4    285.39  71.347  6.6374 0.29782  0.001 ***
-#   Residuals 11    118.24  10.749         0.12339           
-# Total     18    958.26                 1.00000  
+#            Df SumsOfSqs MeanSqs F.Model   R2     Pr(>F)    
+# treatment  3    555.14 185.045 17.2066 0.57897  0.001 ***
+# genet      4    285.39  71.348  6.6344 0.29765  0.002 ** 
+# Residuals 11    118.30  10.754         0.12338           
+# Total     18    958.83                 1.00000           
 
 ## Add the stats to the PCA plot
 pca_top_gen_pval <- substitute(italic(P[genotype])==p, list(p = format(adon_top$aov.tab[[2,6]], digits = 2)))
@@ -176,8 +175,8 @@ pca_top <- ggplot(pca_s, aes(PC1, PC2, fill=treatment, shape=genet, group=treatm
   guides(color=guide_legend(title="Treatment"))+
   guides(pch=guide_legend(title="Genotype"))+
   geom_point(color = "black", size=4) +
-  scale_fill_manual(values=cbPalette)+
-  scale_colour_manual(values=cbPalette)+
+  scale_fill_manual(values = cbPalette, labels = c("AMB", "MP", "OAW", "OAW+MP")) +
+  scale_colour_manual(values = cbPalette, labels = c("AMB", "MP", "OAW", "OAW+MP")) +
   scale_shape_manual(values=c(21,22,23,24,25))+
   theme_bw() +
   theme(panel.grid = element_blank(), legend.position = "none") + 
@@ -207,7 +206,7 @@ plast_out <- PCAplast(pca = pca, # the PCA dataframe containing the PCA eigenval
                       data = conds, # the condition/treatment data corresponding to samples
                       sample_ID = "Samples", # the name of column that provide unique ID per sample (if blank, will pull rownames for this)
                       num_pca =  "2", # the number of PCAs to include in analysis (default is 'all', but you can specify another number with a minimum of 2 PCAs)
-                      control_lvl = "AMB", # control level of the treatment. If blank, a control mean per control level is assumed
+                      control_lvl = "AMB_Control", # control level of the treatment. If blank, a control mean per control level is assumed
                       group = "genet", # the grouping column (i.e., colony). If blank, will assume control level grouping only!
                       control_col = "treatment") # what the 'treatment' column is called
 head(plast_out)
@@ -216,15 +215,17 @@ head(plast_out)
 ## Check the stats and pull pvalue for plotting
 aov1 <- aov(dist~treatment, data=plast_out)
 summary(aov1)
-# Df Sum Sq Mean Sq F value Pr(>F)  
-# treatment    2  98.85   49.43   4.349 0.0406 *
-#   Residuals   11 125.03   11.37  
+#             Df Sum Sq Mean Sq F value Pr(>F)  
+# treatment    2  98.92   49.46   4.345 0.0407 *
+# Residuals   11 125.23   11.38                 
+
 TukeyHSD(aov1)
 # $treatment
-# diff        lwr       upr     p adj
-# OAW-AMB_MP -0.5304615 -6.6386956  5.577773 0.9702090
-# OAW_MP-AMB_MP       5.2923110 -0.4665873 11.051209 0.0723525
-# OAW_MP-OAW  5.8227725 -0.2854615 11.931007 0.0619245
+#                        diff        lwr       upr     p adj
+# OAW_Control-AMB_MP -0.5364327 -6.6495042  5.576639 0.9695941
+# OAW_MP-AMB_MP       5.2911445 -0.4723146 11.054604 0.0726572
+# OAW_MP-OAW_Control  5.8275772 -0.2854944 11.940649 0.0619155
+
 
 ## Add the stats to the PCA plot
 aov_top_gen_pval <- substitute(italic(P[treat])==p, list(p = format(tidy(aov1)[[1,6]], digits = 2)))
@@ -234,8 +235,8 @@ aov_top_gen_pval <- substitute(italic(P[treat])==p, list(p = format(tidy(aov1)[[
 pdf("Figures/plasticity_top1000.pdf",height=4,width=3, useDingbats = FALSE)
 plast_plot <- ggplot(data = plast_out, aes(x = treatment, y = dist, fill=treatment, shape=genet, group=treatment)) + 
   geom_point(color = "black", size=4, alpha = 0.3, position = position_jitter(width = 0.15)) +
-  scale_fill_manual(values = cbPalette[-1])+
-  scale_colour_manual(values = cbPalette[-1])+
+  scale_fill_manual(values = cbPalette[-1], labels = c("AMB", "MP", "OAW", "OAW+MP")) +
+  scale_colour_manual(values = cbPalette[-1], labels = c("AMB", "MP", "OAW", "OAW+MP")) +
   scale_shape_manual(values=c(21,22,23,24,25))+
   stat_summary(fun.data = mean_sdl, fun.args = list(mult = 1), geom = "errorbar", width = 0, size = 1, colour = cbPalette[-1]) +
   stat_summary(fun = "mean", size = 0.8, colour = cbPalette[-1]) +
@@ -269,7 +270,7 @@ ggsave("Figures/Figure3_GE.pdf", height = 5, width = 14, useDingbats = FALSE)
 #################### OAW pairwise comparisons
 g
 ##second term is the "control"
-resOAW <- results(dds, contrast=c("conditions.treat","OAW","AMB"))
+resOAW <- results(dds, contrast=c("conditions.treat","OAW_Control","AMB_Control"))
 #how many FDR < 10%?
 table(resOAW$padj<0.05)
 # 0.1=36
@@ -314,8 +315,7 @@ write.csv(go_OAW, file="go_OAW.csv", quote=F, row.names=FALSE)
 
 
 ########################## MP Pairwise Comparison
-conditions <- read.csv("samples_renamed.csv") %>% 
-  mutate(treat = recode(treat, AMB_Control = "AMB", AMB_MP = "MP", OAW_Control = "OAW", OAW_MP = "OAW+MP"))
+conditions <- read.csv("samples_renamed.csv") 
 row.names(conditions) <- conditions$sample
 conditions <- subset(conditions,sample!=29)
 remove <- c("2","19","26","6")
@@ -323,9 +323,9 @@ conditions <- conditions[!conditions$sample %in% remove,]
 g=data.frame(conditions$genet, conditions$treat)
 g
 g=data.frame(conditions$genet, conditions$treat)
-g$conditions.treat<-factor(g$conditions.treat, levels=c("MP","AMB"))
+g$conditions.treat<-factor(g$conditions.treat, levels=c("AMB_MP","AMB_Control"))
 ##second term is the "control"
-resMP <- results(dds, contrast=c("conditions.treat","MP","AMB"))
+resMP <- results(dds, contrast=c("conditions.treat","AMB_MP","AMB_Control"))
 #how many FDR < 10%?
 table(resMP$padj<0.05)
 # 0.1=57
@@ -369,8 +369,7 @@ write.csv(go_MP, file="go_MP.csv", quote=F, row.names=FALSE)
 
 
 ################# Pairwise Comparison OAW+MP
-conditions <- read.csv("samples_renamed.csv") %>% 
-  mutate(treat = recode(treat, AMB_Control = "AMB", AMB_MP = "MP", OAW_Control = "OAW", OAW_MP = "OAW+MP"))
+conditions <- read.csv("samples_renamed.csv")
 row.names(conditions) <- conditions$sample
 conditions <- subset(conditions,sample!=29)
 remove <- c("2","19","26","6")
@@ -378,25 +377,25 @@ conditions <- conditions[!conditions$sample %in% remove,]
 g=data.frame(conditions$genet, conditions$treat)
 g
 g=data.frame(conditions$genet, conditions$treat)
-g$conditions.treat<-factor(g$conditions.treat, levels=c("OAW+MP","AMB"))
+g$conditions.treat<-factor(g$conditions.treat, levels=c("OAW_MP","AMB_Control"))
 ##second term is the "control"
-resALL <- results(dds, contrast=c("conditions.treat","OAW+MP","AMB"))
+resALL <- results(dds, contrast=c("conditions.treat","OAW_MP","AMB_Control"))
 #how many FDR < 10%?
 table(resALL$padj<0.05)
 # 0.1=138
-# 0.05=100
+# 0.05=98
 # 0.01=55
 summary(resALL)
 # out of 21327 with nonzero total read count
 # adjusted p-value < 0.1
-# LFC > 0 (up)     : 80, 0.38% 
-# LFC < 0 (down)   : 58, 0.27% 
-# outliers [1]     : 0, 0% 
-# low counts [2]   : 12397, 58% 
+# LFC > 0 (up)       : 83, 0.39%
+# LFC < 0 (down)     : 60, 0.28%
+# outliers [1]       : 0, 0%
+# low counts [2]     : 12810, 60%
 # (mean count < 9)
 
 nrow(resALL[resALL$padj<0.05 & !is.na(resALL$padj),])  # Num significantly differentially expressed genes excluding the no/low count genes   #228
-#100
+#98
 plotMA(resALL, main="OAW_Microplastics vs AMB")
 
 results <- as.data.frame(resALL)
@@ -404,8 +403,8 @@ head(results)
 
 nrow(resALL[resALL$padj<0.1 & resALL$log2FoldChange > 0 & !is.na(resALL$padj),])
 nrow(resALL[resALL$padj<0.1 & resALL$log2FoldChange < 0 & !is.na(resALL$padj),])
-#UP in ALL 80
-#DOWN in ALL 58
+#UP in ALL 83
+#DOWN in ALL 60
 
 write.table(resALL, file="OAW_MP.txt", quote=F, sep="\t")
 
@@ -474,12 +473,12 @@ length(pMP_up) #48
 pMP_down=row.names(resMP[resMP$padj<0.1 & !is.na(resMP$padj) & resMP$log2FoldChange<0,])
 length(pMP_down) #9
 pALL_up=row.names(resALL[resALL$padj<0.1 & !is.na(resALL$padj) & resALL$log2FoldChange>0,])
-length(pALL_up) #80
+length(pALL_up) #83
 pALL_down=row.names(resALL[resALL$padj<0.1 & !is.na(resALL$padj) & resALL$log2FoldChange<0,])
-length(pALL_down) #58
+length(pALL_down) #60
 
 pOAW=row.names(resOAW[resOAW$padj<0.1 & !is.na(resOAW$padj),])
-length(pOAW)
+length(pOAW) #36
 pMP=row.names(resMP[resMP$padj<0.1 & !is.na(resMP$padj),])
 pALL=row.names(resALL[resALL$padj<0.1 & !is.na(resALL$padj),])
 
@@ -487,19 +486,19 @@ pALL=row.names(resALL[resALL$padj<0.1 & !is.na(resALL$padj),])
 pdegs05p_up=union(pOAW_up,pMP_up)
 pdegs05_up=union(pdegs05p_up,pALL_up)
 length(pdegs05_up)
-#129
+#132
 
 #DOWN
 pdegs05p_down=union(pOAW_down,pMP_down)
 pdegs05_down=union(pdegs05p_down,pALL_down)
 length(pdegs05_down)
-#80
+#81
 
 #ALL
 pdegs05p=union(pOAW,pMP)
 pdegs05=union(pdegs05p,pALL)
 length(pdegs05)
-#209
+#213
 
 ###do separately for UP, DOWN, ALL and save as PDF
 library(ggvenn)
@@ -598,7 +597,7 @@ my_colour = list(
 library(pheatmap)
 
 # big heat map of all annotated genes
-pdf("Figures/MP_AMB_DEGS_0.10_annotated.pdf",height=5,width=25, onefile=F)
+pdf("Figures/MP_AMB_DEGS_0.10_annotated.pdf",height=6,width=20, onefile=F)
 pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
 
@@ -659,7 +658,7 @@ my_colour = list(
   treatment = c(OAW = cbPalette[3], AMB = cbPalette[1]))
 
 # big heat map of all annotated genes
-pdf("Figures/OAW_AMB_DEGS_0.10_annotated.pdf",height=5,width=10, onefile=F)
+pdf("Figures/OAW_AMB_DEGS_0.10_annotated.pdf",height=3.5,width=8, onefile=F)
 pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
 
@@ -719,12 +718,12 @@ my_colour = list(
   treatment = c(OAW_MP = cbPalette[4], AMB = cbPalette[1]))
 
 # big heat map of all annotated genes
-pdf("Figures/OAW_MP_AMB_DEGS_0.10_annotated.pdf",height=10,width=20, onefile=F)
+pdf("Figures/OAW_MP_AMB_DEGS_0.10_annotated.pdf",height=12,width=18, onefile=F)
 pheatmap(anno,cluster_cols=T,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = T, show_colnames =F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
 
 # big heat map of all DEGs, no annotation too
-pdf("Figures/OAW_MP_AMB_DEGS_0.10_unannotated.pdf",height=4,width=4, onefile=F)
+pdf("Figures/OAW_MP_AMB_DEGS_0.10_unannotated.pdf",height=8,width=6, onefile=F)
 pheatmap(unanno,cluster_cols=T,scale="row",color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = F,show_colnames = F, border_color = "NA", annotation_names_col = FALSE)
 dev.off()
 
@@ -791,17 +790,17 @@ head(anno)
 colnames(anno)
 
 ##write out and edit manually a few gene names that have weird descriptions
-write.csv(anno, "immunity_info.csv", quote=TRUE)
-anno2=read.csv("immunity_info.csv", row.names=1)
+write.csv(anno, "immunity_info_raw.csv", quote=TRUE)
+anno2 <- read.csv("immunity_info_EDIT.csv", row.names=1) # Sarah performed some modifications to the excel file before uploading it here
 
 #cbPalette2 <- c("darkorange","firebrick2", "firebrick4")
-my_sample_col <- data.frame(treatment = c("OAW_MP","AMB","AMB","OAW_MP","AMB","OAW_MP","OAW_MP", "OAW_MP","AMB","AMB"))
-row.names(my_sample_col)= colnames(anno)
-my_colour = list(
-  treatment = c(OAW_MP = cbPalette[4], AMB = cbPalette[1]))
+my_sample_col <- data.frame(treatment = c("OAW+MP","AMB","AMB","OAW+MP","AMB","OAW+MP","OAW+MP", "OAW+MP","AMB","AMB"))
+row.names(my_sample_col)= colnames(anno2)
+my_colour = list(treatment = c(`OAW+MP` = cbPalette[4], AMB = cbPalette[1]))
 
 # big heat map of all annotated genes
 library(pheatmap)
-pdf("Figures/OAW_AMB_immunity.pdf",height=8.5,width=16, onefile=F)
-pheatmap(anno2, cluster_cols=TRUE,scale="row", color=col0, annotation_col= my_sample_col, annotation_colors =my_colour, show_rownames = TRUE, show_colnames =FALSE, border_color = "NA", annotation_names_col = FALSE)
+pdf("Figures/Figure4_OAW_AMB_immunity.pdf", height = 8.2, width = 9, onefile = F)
+pheatmap(anno2, cluster_cols = TRUE, scale = "row", color = col0, annotation_col = my_sample_col, annotation_colors = my_colour, show_rownames = TRUE, show_colnames = FALSE, border_color = "NA")
 dev.off()
+
